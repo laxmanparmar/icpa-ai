@@ -1,0 +1,139 @@
+service: icpa-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  memorySize: 512
+  timeout: 300
+  environment:
+    STAGE: ${self:provider.stage}
+    S3_BUCKET_NAME: ${env:S3_BUCKET_NAME, ''}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, ''}
+    AWS_REGION: ${self:provider.region}
+    QDRANT_URL: ${env:QDRANT_URL, ''}
+    QDRANT_API_KEY: ${env:QDRANT_API_KEY, ''}
+    QDRANT_COLLECTION_NAME: ${env:QDRANT_COLLECTION_NAME, 'policies'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:GetQueueAttributes
+      Resource:
+        - Fn::GetAtt:
+            - SqsQueue
+            - Arn
+    - Effect: Allow
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource: "arn:aws:logs:*:*:*"
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:ListBucket
+      Resource:
+        - "arn:aws:s3:::${env:S3_BUCKET_NAME, '*'}"
+        - "arn:aws:s3:::${env:S3_BUCKET_NAME, '*'}/*"
+
+plugins:
+  - serverless-plugin-typescript
+
+functions:
+  processSqsMessage:
+    handler: src/handler.processSqsMessage
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - SqsQueue
+              - Arn
+          batchSize: 1
+
+resources:
+  Resources:
+    # SNS Topic
+    SnsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: icpa-service-sns-${self:provider.stage}
+        DisplayName: ICPA Service SNS Topic
+
+    # SQS Queue
+    SqsQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-queue
+        VisibilityTimeout: 300
+        MessageRetentionPeriod: 1209600 # 14 days
+        ReceiveMessageWaitTimeSeconds: 20 # Long polling
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt:
+              - DeadLetterQueue
+              - Arn
+          maxReceiveCount: 3
+        Policy:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: sns.amazonaws.com
+              Action:
+                - sqs:SendMessage
+              Resource:
+                Fn::GetAtt:
+                  - SqsQueue
+                  - Arn
+              Condition:
+                ArnEquals:
+                  aws:SourceArn:
+                    Ref: SnsTopic
+
+    # Dead Letter Queue
+    DeadLetterQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${self:provider.stage}-dlq
+        MessageRetentionPeriod: 1209600 # 14 days
+
+    # SNS Subscription to SQS
+    SnsToSqsSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn:
+          Ref: SnsTopic
+        Protocol: sqs
+        Endpoint:
+          Fn::GetAtt:
+            - SqsQueue
+            - Arn
+
+  Outputs:
+    SnsTopicArn:
+      Description: ARN of the SNS Topic
+      Value:
+        Ref: SnsTopic
+      Export:
+        Name: ${self:service}-${self:provider.stage}-SnsTopicArn
+
+    SqsQueueUrl:
+      Description: URL of the SQS Queue
+      Value:
+        Ref: SqsQueue
+      Export:
+        Name: ${self:service}-${self:provider.stage}-SqsQueueUrl
+
+    SqsQueueArn:
+      Description: ARN of the SQS Queue
+      Value:
+        Fn::GetAtt:
+          - SqsQueue
+          - Arn
+      Export:
+        Name: ${self:service}-${self:provider.stage}-SqsQueueArn
+

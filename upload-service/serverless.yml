@@ -1,0 +1,36 @@
+service: upload-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    AWS_REGION: ${self:provider.region}
+    S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
+    PRESIGNED_URL_EXPIRY: ${env:PRESIGNED_URL_EXPIRY, '600'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:PutObjectAcl
+      Resource:
+        - arn:aws:s3:::${env:S3_BUCKET_NAME}/users/*
+
+plugins:
+  - serverless-plugin-typescript
+
+functions:
+  api:
+    handler: dist/handler.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+      - http:
+          path: /
+          method: ANY
+          cors: true
+

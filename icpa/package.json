@@ -1,0 +1,48 @@
+{
+  "name": "icpa-sns-sqs-lambda",
+  "version": "1.0.0",
+  "description": "Event-based service triggered via SNS -> SQS -> Lambda",
+  "main": "dist/handler.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "serverless deploy",
+    "remove": "serverless remove",
+    "logs": "serverless logs -f processSqsMessage -t",
+    "local": "ts-node src/localentrypoint.ts",
+    "local:watch": "ts-node-dev --respawn src/localentrypoint.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "sns",
+    "sqs",
+    "serverless",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.130",
+    "@types/node": "^20.10.6",
+    "serverless": "^3.38.0",
+    "serverless-plugin-typescript": "^2.1.5",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.925.0",
+    "@langchain/core": "^1.0.3",
+    "@langchain/openai": "^1.0.0",
+    "@langchain/qdrant": "^1.0.0",
+    "@qdrant/js-client-rest": "^1.15.1",
+    "@types/pdf-parse": "^1.1.5",
+    "aws-sdk": "^2.1524.0",
+    "canvas": "^3.2.0",
+    "dotenv": "^16.3.1",
+    "langchain": "^1.0.3",
+    "pdfjs-dist": "^5.4.394",
+    "zod": "^3.22.4"
+  }
+}
