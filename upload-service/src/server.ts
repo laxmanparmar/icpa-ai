@@ -26,13 +26,10 @@ if (!BUCKET_NAME) {
 
 app.use(express.json());
 
-app.post('/presigned-url', async (req: Request, res: Response) => {
+app.post('/presigned-url/:userId', async (req: Request, res: Response) => {
   try {
-    const { userId, fileName, fileType } = req.body;
-
-    if (!userId || !fileName || !fileType) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    const { fileName, fileType } = req.body;
+    const userId = req.params.userId;
 
     const key = `users/${userId}/${fileName}`;
 

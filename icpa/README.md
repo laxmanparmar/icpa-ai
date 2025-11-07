@@ -8,7 +8,7 @@ An event-driven serverless service that processes messages from SNS via SQS usin
 SNS Topic → SQS Queue → Lambda Function
 ```
 
-- **SNS Topic**: Publishes messages
+- **SNS Topic**: Once user upload the document and submit the claim we publish this SNS message with userId.
 - **SQS Queue**: Receives messages from SNS and triggers Lambda
 - **Lambda Function**: Processes messages from SQS
 - **Dead Letter Queue**: Captures failed messages after 3 retries
@@ -157,11 +157,6 @@ aws sqs send-message \
 4. **Processing**: Lambda extracts and processes the message
 5. **DLQ**: Failed messages (after 3 retries) go to Dead Letter Queue
 
-## Customization
-
-### Modify Business Logic
-
-Edit `src/handler.ts` and update the `processBusinessLogic` function to implement your specific requirements.
 
 ### Adjust Configuration
 

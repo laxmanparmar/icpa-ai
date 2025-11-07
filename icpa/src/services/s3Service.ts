@@ -17,11 +17,7 @@ export class S3Service {
     this.s3Client = new S3Client({ region });
   }
 
-  /**
-   * Fetch all files from a folder organized by userId
-   * @param userId - The user ID to fetch files for
-   * @returns Array of file metadata
-   */
+
   async fetchFilesByUserId(userId: string): Promise<S3File[]> {
     try {
       const prefix = `users/${userId}/`;
@@ -40,7 +36,7 @@ export class S3Service {
 
       const files: S3File[] = response.Contents.map((object) => ({
         key: object.Key || '',
-        contentType: undefined, // Will be determined when downloading
+        contentType: undefined,
         size: object.Size,
         lastModified: object.LastModified,
       }));
@@ -53,11 +49,7 @@ export class S3Service {
     }
   }
 
-  /**
-   * Download a file from S3
-   * @param key - The S3 object key
-   * @returns Buffer containing the file content
-   */
+
   async downloadFile(key: string): Promise<Buffer> {
     try {
       const command = new GetObjectCommand({
@@ -71,7 +63,6 @@ export class S3Service {
         throw new Error(`File ${key} has no body`);
       }
 
-      // Convert stream to buffer
       const stream = response.Body as Readable;
       const chunks: Uint8Array[] = [];
       
@@ -87,11 +78,7 @@ export class S3Service {
     }
   }
 
-  /**
-   * Get file content type
-   * @param key - The S3 object key
-   * @returns Content type string
-   */
+  
   async getFileContentType(key: string): Promise<string> {
     try {
       const command = new GetObjectCommand({
@@ -103,14 +90,10 @@ export class S3Service {
       return response.ContentType || 'application/octet-stream';
     } catch (error) {
       console.error(`Error getting content type for ${key}:`, error);
-      // Fallback to extension-based detection
       return this.getContentTypeFromExtension(key);
     }
   }
 
-  /**
-   * Determine content type from file extension
-   */
   private getContentTypeFromExtension(key: string): string {
     const extension = key.toLowerCase().split('.').pop();
     const contentTypes: Record<string, string> = {

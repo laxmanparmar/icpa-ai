@@ -62,7 +62,7 @@ GET /health
 
 #### Get Presigned URL
 ```
-GET /presigned-url?userId=<userId>&fileName=<fileName>
+GET /presigned-url/:userId?fileName=<fileName>
 ```
 
 **Parameters:**
@@ -82,7 +82,7 @@ GET /presigned-url?userId=<userId>&fileName=<fileName>
 
 **Example:**
 ```bash
-curl "http://localhost:3000/presigned-url?userId=user123&fileName=photo.jpg"
+curl "http://localhost:3000/presigned-url/user123?fileName=photo.jpg"
 ```
 
 ## Production Deployment
@@ -144,7 +144,7 @@ upload-service/
 
 1. Get a presigned URL:
 ```bash
-curl "http://localhost:3000/presigned-url?userId=user123&fileName=document.pdf"
+curl "http://localhost:3000/presigned-url/user123?fileName=document.pdf"
 ```
 
 2. Upload file using the presigned URL:
