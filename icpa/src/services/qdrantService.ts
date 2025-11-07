@@ -54,7 +54,7 @@ export class QdrantService {
   async searchPolicies(
     query: string,
     limit: number = 5,
-    source: string = 'insurance_claim_policy'
+    source: string
   ): Promise<PolicyDocument[]> {
     try {
       await this.ensureInitialized();
@@ -65,7 +65,6 @@ export class QdrantService {
       console.log(`Searching Qdrant for policies with query: ${query.substring(0, 100)}...`);
       console.log(`Filtering by source: ${source}`);
 
-      // Build Qdrant filter format
       const filter = {
         must: [
           {
@@ -75,7 +74,6 @@ export class QdrantService {
         ],
       };
 
-      // Perform similarity search with metadata filter
       const results = await this.vectorStore.similaritySearchWithScore(
         query,
         limit,
@@ -96,7 +94,6 @@ export class QdrantService {
       return policies;
     } catch (error) {
       console.error('Error searching Qdrant:', error);
-      // Return empty array on error to continue processing
       return [];
     }
   }
@@ -114,17 +111,14 @@ export class QdrantService {
 
       console.log(`Searching Qdrant with custom filter:`, filter);
 
-      // Build Qdrant filter format
       const mustConditions: any[] = [];
       
-      // Default to source filter if not provided
       const sourceValue = filter?.source || 'insurance_claim_policy';
       mustConditions.push({
         key: 'metadata.source',
         match: { value: sourceValue },
       });
 
-      // Add other filters if provided
       if (filter) {
         Object.entries(filter).forEach(([key, value]) => {
           if (key !== 'source' && value !== undefined) {
@@ -140,7 +134,6 @@ export class QdrantService {
         must: mustConditions,
       };
 
-      // Perform similarity search with metadata filter
       const results = await this.vectorStore.similaritySearchWithScore(
         query,
         limit,

@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export interface ClaimEvaluationResult {
   decision: 'Approved' | 'Rejected';
-  confidence: number; // 0-100
+  confidence: number;
   reasoning: string;
   policyReferences: string[];
   keyFactors: string[];
@@ -30,7 +30,6 @@ export interface ClaimEvaluationInput {
   userId: string;
 }
 
-// Structured output schema for validation
 const ClaimEvaluationSchema = z.object({
   decision: z.enum(['Approved', 'Rejected']).describe('The final decision on the claim'),
   confidence: z
@@ -54,22 +53,18 @@ export class ClaimEvaluator {
     this.llm = llm;
   }
 
-  /**
-   * Evaluate insurance claim based on all collected information
-   * Uses structured output for deterministic results
-   */
+
   async evaluateClaim(input: ClaimEvaluationInput): Promise<ClaimEvaluationResult> {
     try {
       console.log('Starting claim evaluation...');
 
-      // Prepare system prompt
       const systemPrompt = `You are an expert insurance claim evaluator. Your task is to analyze all available information and make a deterministic decision on whether to approve or reject an insurance claim.
 
 Rules for evaluation:
 1. Carefully analyze all car damage details from images
-2. Review PDF documents for claim information, policy details, and incident reports
-3. Compare against policy documents retrieved from the knowledge base
-4. Ensure the claim is within policy coverage
+2. Review Police Report Documents
+3. Compare against Company Policy Documents
+4. Ensure the claim is within Company Policy Documents coverage
 5. Verify all required information is present
 6. Check for any inconsistencies or fraud indicators
 
@@ -82,10 +77,9 @@ You must provide:
 
 Be thorough, accurate, and consistent. The same input should always produce the same output.`;
 
-      // Prepare human prompt with all information
       const carDetailsText = this.formatCarDetails(input.carDetails);
-      const pdfDataText = this.formatPDFData(input.pdfData);
-      const policyText = this.formatPolicyDocuments(input.policyDocuments);
+      const policeReportText = this.formatPDFData(input.pdfData);
+      const companyPolicyText = this.formatPolicyDocuments(input.policyDocuments);
 
       const jsonSchema = {
         type: 'object',
@@ -119,7 +113,6 @@ Be thorough, accurate, and consistent. The same input should always produce the 
         required: ['decision', 'confidence', 'reasoning', 'policyReferences', 'keyFactors'],
       };
 
-      // Escape curly braces in JSON schema for template parsing
       const jsonSchemaString = JSON.stringify(jsonSchema, null, 2)
         .replace(/\{/g, '{{')
         .replace(/\}/g, '}}');
@@ -129,51 +122,53 @@ Be thorough, accurate, and consistent. The same input should always produce the 
 CAR DETAILS FROM IMAGES:
 {carDetails}
 
-PDF DOCUMENT INFORMATION:
-{pdfData}
+Police Report Documents:
+{policeReportText}
 
-POLICY DOCUMENTS:
-{policyDocuments}
+Company Policy Documents:
+{companyPolicyText}
+
+
+USER POLICY DOCUMENTS:
+policy number: 12333
+claim number: 4556567
+claim amount: 10000
+claim date: 2025-11-05
+user email: test@test.com
 
 You must respond with a valid JSON object matching this exact schema:
 {jsonSchema}
 
 Respond ONLY with the JSON object, no additional text or markdown formatting.`;
 
-      // Create chat prompt
+
       const prompt = ChatPromptTemplate.fromMessages([
         SystemMessagePromptTemplate.fromTemplate(systemPrompt),
         HumanMessagePromptTemplate.fromTemplate(humanPromptTemplate),
       ]);
 
-      // Generate response
+
       const chain = prompt.pipe(this.llm);
       const response = await chain.invoke({
         userId: input.userId,
         carDetails: carDetailsText,
-        pdfData: pdfDataText,
-        policyDocuments: policyText,
+        policeReportText: policeReportText,
+        companyPolicyText: companyPolicyText,
         jsonSchema: jsonSchemaString,
       });
       
-      // Extract JSON from response
       let content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
       
-      // Remove markdown code blocks if present
       content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       
-      // Try to extract JSON object
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No valid JSON found in LLM response');
       }
 
       const parsedResult = JSON.parse(jsonMatch[0]);
-
-      // Validate with Zod schema
       const validatedResult = ClaimEvaluationSchema.parse(parsedResult);
 
-      // Format result
       const evaluation: ClaimEvaluationResult = {
         decision: validatedResult.decision === 'Approved' ? 'Approved' : 'Rejected',
         confidence: Math.max(0, Math.min(100, validatedResult.confidence)),
@@ -185,12 +180,9 @@ Respond ONLY with the JSON object, no additional text or markdown formatting.`;
           ? validatedResult.keyFactors 
           : [],
       };
-
-      console.log(`Claim evaluation completed: ${evaluation.decision} (confidence: ${evaluation.confidence}%)`);
       return evaluation;
     } catch (error) {
       console.error('Error evaluating claim:', error);
-      // Return a safe default on error
       return {
         decision: 'Rejected',
         confidence: 0,
@@ -201,9 +193,7 @@ Respond ONLY with the JSON object, no additional text or markdown formatting.`;
     }
   }
 
-  /**
-   * Format car details for prompt
-   */
+
   private formatCarDetails(carDetails: Array<ClaimEvaluationInput['carDetails'][0]>): string {
     if (carDetails.length === 0) {
       return 'No car images were processed.';
@@ -221,9 +211,6 @@ Respond ONLY with the JSON object, no additional text or markdown formatting.`;
       .join('\n\n');
   }
 
-  /**
-   * Format PDF data for prompt
-   */
   private formatPDFData(pdfData: Array<ClaimEvaluationInput['pdfData'][0]>): string {
     if (pdfData.length === 0) {
       return 'No PDF documents were processed.';
@@ -245,9 +232,6 @@ ${pdf.text.substring(0, 2000)}${pdf.text.length > 2000 ? '...' : ''}`;
       .join('\n\n');
   }
 
-  /**
-   * Format policy documents for prompt
-   */
   private formatPolicyDocuments(
     policies: Array<ClaimEvaluationInput['policyDocuments'][0]>
   ): string {
