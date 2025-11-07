@@ -22,7 +22,8 @@ This repository contains a complete serverless pipeline for processing insurance
 ```
 
 
-![FlowDiagram](https://drive.google.com/file/d/1aTXSJU4CvkFiOzIFQJfPhEB-r0-X9q13/view?usp=sharing)
+![FlowDiagram](https://drive.google.com/uc?export=view&id=1aTXSJU4CvkFiOzIFQJfPhEB-r0-X9q13)
+
 
 ## Services
 
