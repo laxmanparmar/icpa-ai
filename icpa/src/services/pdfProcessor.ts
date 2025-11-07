@@ -1,6 +1,8 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
+import { JsonOutputParser } from "@langchain/core/output_parsers";
+
 
 export interface StructuredPDFData {
   text: string;
@@ -101,33 +103,17 @@ export class PDFProcessor {
         HumanMessagePromptTemplate.fromTemplate(humanPrompt),
       ]);
 
-
-      const chain = prompt.pipe(this.llm);
+      const jsonOutputParser = new JsonOutputParser();
+      const chain = prompt.pipe(this.llm).pipe(jsonOutputParser);
       const truncatedText = text.substring(0, 15000) + (text.length > 15000 ? '\n\n... (content truncated)' : '');
       const response = await chain.invoke({ text: truncatedText });
       
-
-      let content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      
-
-      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.warn('No valid JSON found in LLM response, using empty object');
-        return {};
-      }
-
-      const parsedResult = JSON.parse(jsonMatch[0]);
-
-
       try {
-        const validatedResult = PDFExtractionSchema.parse(parsedResult);
+        const validatedResult = PDFExtractionSchema.parse(response);
         return validatedResult as Record<string, any>;
       } catch (validationError) {
         console.warn('Schema validation failed, returning parsed result:', validationError);
-        return parsedResult as Record<string, any>;
+        return response as Record<string, any>;
       }
     } catch (error) {
       console.error('Error extracting fields with LLM:', error);
