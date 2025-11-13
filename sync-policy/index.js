@@ -41,16 +41,16 @@ async function main() {
     doc.metadata.source = 'insurance_claim_policy';
   });
 
-  // Check if collection exists
+
   const collections = await client.getCollections();
   const collectionExists = collections.collections.some(
     (col) => col.name === COLLECTION_NAME
   );
 
-  // Get embedding dimension (text-embedding-3-small has 1536 dimensions)
-  const embeddingDimension = 1536;
 
-  // Create collection if it doesn't exist
+  const embeddingDimension = 768;
+
+
   if (!collectionExists) {
     console.log(`Creating collection "${COLLECTION_NAME}"...`);
     await client.createCollection(COLLECTION_NAME, {
@@ -62,7 +62,6 @@ async function main() {
     console.log(`✅ Collection "${COLLECTION_NAME}" created`);
   }
 
-  // Create payload index for metadata.source field
   try {
     await client.createPayloadIndex(COLLECTION_NAME, {
       field_name: "metadata.source",
@@ -70,13 +69,11 @@ async function main() {
     });
     console.log("✅ Created payload index for metadata.source");
   } catch (error) {
-    // Index might already exist, which is fine
     const errorMsg = error.message || error.toString() || "";
     if (errorMsg.includes("already exists") || errorMsg.includes("Bad request")) {
       console.log("ℹ️  Index for metadata.source already exists, skipping creation");
     } else {
       console.warn("Warning: Could not create index:", errorMsg);
-      // Continue anyway - index might not be critical for initial setup
     }
   }
 
