@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from "langchain";
+import { DynamicStructuredTool } from "@langchain/core/tools";
 import z from "zod";
 import { QdrantService } from "../services/qdrantService";
 
