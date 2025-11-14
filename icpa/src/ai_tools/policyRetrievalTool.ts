@@ -29,17 +29,6 @@ export function createPolicyRetrievalTool(
         
         const policies = await qdrantService.searchPolicies(query, limit, source);
         
-        if (policies.length === 0 && userId) {
-          console.log(`No policies found with source filter, trying with userId filter...`);
-          const policiesWithUserId = await qdrantService.searchPoliciesWithFilter(query, limit, {
-            source: source,
-            userId: userId,
-          });
-          policies.push(...policiesWithUserId);
-        }
-        
-        console.log(`[Tool] Retrieved ${policies.length} policies from Qdrant`);
-        
         return JSON.stringify({
           retrievedPolicies: policies.length,
           policies: policies.map(p => ({
