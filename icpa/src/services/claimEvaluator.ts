@@ -1,5 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { JsonOutputParser } from '@langchain/core/output_parsers';
 import { z } from 'zod';
 
 export interface ClaimEvaluationResult {
@@ -147,9 +148,10 @@ Respond ONLY with the JSON object, no additional text or markdown formatting.`;
         HumanMessagePromptTemplate.fromTemplate(humanPromptTemplate),
       ]);
 
-
-      const chain = prompt.pipe(this.llm);
-      const response = await chain.invoke({
+      const jsonOutputParser = new JsonOutputParser();
+      const chain = prompt.pipe(this.llm).pipe(jsonOutputParser);
+      
+      const parsedResult = await chain.invoke({
         userId: input.userId,
         carDetails: carDetailsText,
         policeReportText: policeReportText,
@@ -157,16 +159,6 @@ Respond ONLY with the JSON object, no additional text or markdown formatting.`;
         jsonSchema: jsonSchemaString,
       });
       
-      let content = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      
-      content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('No valid JSON found in LLM response');
-      }
-
-      const parsedResult = JSON.parse(jsonMatch[0]);
       const validatedResult = ClaimEvaluationSchema.parse(parsedResult);
 
       const evaluation: ClaimEvaluationResult = {
